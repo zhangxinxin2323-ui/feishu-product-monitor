@@ -10,21 +10,51 @@ import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const BASE_TOKEN = "InWmbEcLJaln9Msoon8cDnZcnWe";
-const CONFIG_TABLE = "tblLn2TAEblG2aUG";
-const TRACK_TABLE = "tblPIVltaQ6YJmjj";
+// --- Configuration: read from env vars or .env file ---
+// Users must set these before running:
+//   FEISHU_BASE_TOKEN  - Feishu Bitable App token
+//   FEISHU_CONFIG_TABLE - Table ID for ASIN config
+//   FEISHU_TRACK_TABLE  - Table ID for tracking results
+// Can be set via environment variables or a .env file in the scripts directory.
+
+// Load .env file if exists
+const envFile = join(__dirname, '.env');
+try {
+  const envContent = (await import('fs')).readFileSync(envFile, 'utf-8');
+  envContent.split('\n').forEach(line => {
+    const m = line.match(/^\s*([A-Z_]+)\s*=\s*(.+?)\s*$/);
+    if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^["']|["']$/g, '');
+  });
+} catch {}
+
+const BASE_TOKEN = process.env.FEISHU_BASE_TOKEN;
+const CONFIG_TABLE = process.env.FEISHU_CONFIG_TABLE;
+const TRACK_TABLE = process.env.FEISHU_TRACK_TABLE;
+
+if (!BASE_TOKEN || !CONFIG_TABLE || !TRACK_TABLE) {
+  console.error(`Missing configuration. Please set environment variables or create scripts/.env file:
+
+  FEISHU_BASE_TOKEN=your_base_token
+  FEISHU_CONFIG_TABLE=your_config_table_id
+  FEISHU_TRACK_TABLE=your_track_table_id
+
+Get these from your Feishu Bitable URL: https://xxx.feishu.cn/base/<BASE_TOKEN>
+`);
+  process.exit(1);
+}
+
 const SCRAPE_SCRIPT = join(__dirname, "scrape-asin.mjs");
-const CHECK_DEPS = "C:/Users/oo/.claude/skills/web-access/scripts/check-deps.mjs";
 const DELAY_MS = 3000;
 
 // 0. Pre-flight: ensure CDP proxy is ready
 console.log("=== Checking CDP proxy ===");
 try {
-  const checkResult = execSync(`node "${CHECK_DEPS}"`, { encoding: 'utf-8', timeout: 15000 });
-  console.log(checkResult.trim());
+  const res = await fetch("http://localhost:3456/json/version");
+  if (!res.ok) throw new Error("CDP proxy not responding");
+  console.log("CDP proxy OK");
 } catch (e) {
-  console.error("CDP proxy check failed. Please ensure Chrome remote debugging is enabled.");
-  console.error(e.message);
+  console.error("CDP proxy not available at localhost:3456.");
+  console.error("Please ensure Chrome remote debugging is enabled and web-access skill is installed.");
   process.exit(1);
 }
 
