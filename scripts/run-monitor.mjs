@@ -49,7 +49,7 @@ const DELAY_MS = 3000;
 // 0. Pre-flight: ensure CDP proxy is ready
 console.log("=== Checking CDP proxy ===");
 try {
-  const res = await fetch("http://localhost:3456/json/version");
+  const res = await fetch("http://localhost:3456/health");
   if (!res.ok) throw new Error("CDP proxy not responding");
   console.log("CDP proxy OK");
 } catch (e) {
